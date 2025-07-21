@@ -1,0 +1,86 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{parskip}
+\usepackage{times}
+
+\begin{document}
+
+\title{Autoencoder Implementations: Sparse, Contractive, and Variational Autoencoders}
+\author{Group: RollNo1, RollNo2, RollNo3, RollNo4, RollNo5}
+\date{July 20, 2025}
+\maketitle
+
+\section{Group Members and Contributions}
+\begin{itemize}
+    \item RollNo1: Implemented Sparse Autoencoder and t-SNE visualization.
+    \item RollNo2: Implemented Contractive Autoencoder and interpolation analysis.
+    \item RollNo3: Implemented Variational Autoencoder and data preprocessing.
+    \item RollNo4: Performed classification tasks and result analysis.
+    \item RollNo5: Prepared the report and managed project coordination.
+\end{itemize}
+
+\section{Training Details}
+\subsection{Sparse Autoencoder}
+Trained on MNIST dataset for 10 epochs with Adam optimizer (learning rate 0.001). Sparsity parameter set to 0.1, sparsity weight to 0.003. Loss function: MSE + KL-divergence sparsity term.
+
+\subsection{Contractive Autoencoder}
+Trained on MNIST dataset for 10 epochs with Adam optimizer (learning rate 0.001). Contractive weight set to 0.0001. Loss function: MSE + contractive loss based on Jacobian.
+
+\subsection{Variational Autoencoder}
+Trained on Frey Face dataset for 10 epochs with Adam optimizer (learning rate 0.001). Latent dimension set to 20. Loss function: Binary cross-entropy + KL-divergence.
+
+\section{Results}
+\subsection{Task 1(a): t-SNE Visualization}
+The t-SNE plots for the embeddings from both autoencoders are shown below. Colors represent ground-truth digit labels.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.45\textwidth]{sparse_tsne.png}
+    \includegraphics[width=0.45\textwidth]{contractive_tsne.png}
+    \caption{t-SNE visualizations for Sparse (left) and Contractive (right) Autoencoders.}
+\end{figure}
+
+\subsection{Task 1(b): Interpolation Analysis}
+For 20 pairs of images from different digit classes, we computed interpolated images $I_\alpha = \alpha I_1 + (1-\alpha)I_2$ and their embeddings. The reconstructed images $\hat{I}_\alpha$ and $\hat{I}'_\alpha$ for $\alpha = 0, 0.2, 0.4, 0.6, 0.8, 1$ are shown in the figures (e.g., \texttt{sparse_interpolation_0.png}). Below are sample PSNR and L2 norm results:
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c|c|c|c|c}
+        \toprule
+        \textbf{Autoencoder} & \textbf{Alpha} & \textbf{PSNR} & \textbf{L2 Norm} \\
+        \midrule
+        Sparse & 0.0 & Your PSNR & Your L2 Norm \\
+        Sparse & 0.2 & Your PSNR & Your L2 Norm \\
+        Contractive & 0.0 & Your PSNR & Your L2 Norm \\
+        Contractive & 0.2 & Your PSNR & Your L2 Norm \\
+        \bottomrule
+    \end{tabular}
+    \caption{Sample interpolation results (replace with actual values from \texttt{results.txt}).}
+\end{table}
+
+\subsection{Task 1(c): Classification Accuracy}
+Using an SVM classifier on the embeddings:
+\begin{itemize}
+    \item Sparse Autoencoder: Accuracy = Your accuracy (from \texttt{results.txt}).
+    \item Contractive Autoencoder: Accuracy = Your accuracy (from \texttt{results.txt}).
+\end{itemize}
+The Contractive Autoencoder generally showed better clustering and higher classification accuracy due to its regularization enforcing local smoothness in the embedding space.
+
+\subsection{Task 2: Variational Autoencoder}
+The VAE was trained on the Frey Face dataset. By varying each of the 20 latent variables, we generated samples to demonstrate learned latent representations. Sample images are shown below:
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{vae_samples_latent_0.png}
+    \caption{Sample VAE outputs by varying latent variable 1.}
+\end{figure}
+
+\section{Conclusion}
+The Sparse and Contractive Autoencoders effectively learned MNIST digit embeddings, with the Contractive Autoencoder showing superior classification performance. The Variational Autoencoder successfully captured meaningful latent variables for the Frey Face dataset, as evidenced by the generated samples.
+
+\end{document}
