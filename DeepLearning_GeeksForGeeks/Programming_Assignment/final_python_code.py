@@ -94,7 +94,7 @@ class SparseAutoencoder(models.Model):
         recon = self.decoder(z)
         return recon, z
 
-    def sparse_ae_loss(self, y_true, y_pred, z):
+    def loss(self, y_true, y_pred, z):
         mse_loss = tf.reduce_mean(tf.keras.losses.mse(y_true, y_pred))
         rho_hat = tf.reduce_mean(z, axis=0)
         rho_hat = tf.clip_by_value(rho_hat, epsilon, 1 - epsilon)
@@ -117,7 +117,7 @@ class ContractiveAutoencoder(models.Model):
         recon = self.decoder(z)
         return recon, z
 
-    def contractive_ae_loss(self, x, recon, z, model):
+    def loss(self, x, recon, z, model):
         mse_loss = tf.reduce_mean(tf.square(x - recon))
         with tf.GradientTape() as tape:
             tape.watch(z)
@@ -173,7 +173,7 @@ def reconstruct_and_validate(model, dataset, model_name, num_images=5):
     plt.suptitle(f"{model_name} Reconstruction")
     plt.tight_layout()
     plt.savefig(f"./data/output/{model_name}_reconstruction.png")
-    plt.show()
+    # plt.show()
 
 # Function to plot t-SNE of embeddings
 
@@ -203,7 +203,7 @@ def plot_tsne_embeddings(model, dataset, model_name, num_samples=1000):
     plt.legend(title="Digit", loc="best")
     plt.tight_layout()
     plt.savefig(f"./data/output/{model_name}_tsne.png")
-    plt.show()
+    # plt.show()
 
 
 def compute_psnr(img1, img2, max_val=1.0):
@@ -295,7 +295,7 @@ def interpolation_analysis(model, dataset, model_name, num_pairs=20, num_images_
             f"{model_name} Pair {pair_idx+1}: Digit {label1} to {label2}")
         plt.tight_layout()
         plt.savefig(f"./data/output/{model_name}_pair_{pair_idx+1}.png")
-        plt.show()
+        # plt.show()
 
     # Report average metrics
     print(f"\n{model_name} Metrics:")
@@ -347,12 +347,12 @@ contractive_ae.summary()
 
 # Train Sparse Autoencoder
 print("Training Sparse Autoencoder...")
-train(sparse_ae, train_dataset, sparse_ae.sparse_ae_loss,
+train(sparse_ae, train_dataset, sparse_ae.loss,
       epochs, model_type='sparse')
 
 # Train Contractive Autoencoder
 print("\nTraining Contractive Autoencoder...")
-train(contractive_ae, train_dataset, contractive_ae.contractive_ae_loss,
+train(contractive_ae, train_dataset, contractive_ae.loss,
       epochs, model_type='contractive')
 
 print("\nReconstructing and Validating Sparse Autoencoder...")
