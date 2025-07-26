@@ -1,0 +1,114 @@
+2025-07-26 19:46:10.674016: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2025-07-26 19:46:11.518450: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+TensorFlow version: 2.18.0
+No GPU found, using CPU instead
+2025-07-26 19:46:14.984020: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+Sparse Autoencoder Summary:
+Model: "sparse_autoencoder"
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
+┃ Layer (type)                         ┃ Output Shape                ┃         Param # ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
+│ encoder (Functional)                 │ (None, 128)                 │         664,704 │
+├──────────────────────────────────────┼─────────────────────────────┼─────────────────┤
+│ decoder (Functional)                 │ (None, 28, 28, 1)           │         666,635 │
+└──────────────────────────────────────┴─────────────────────────────┴─────────────────┘
+ Total params: 1,331,339 (5.08 MB)
+ Trainable params: 1,331,339 (5.08 MB)
+ Non-trainable params: 0 (0.00 B)
+
+Contractive Autoencoder Summary:
+Model: "contractive_autoencoder"
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
+┃ Layer (type)                         ┃ Output Shape                ┃         Param # ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
+│ encoder (Functional)                 │ (None, 128)                 │         664,704 │
+├──────────────────────────────────────┼─────────────────────────────┼─────────────────┤
+│ decoder (Functional)                 │ (None, 28, 28, 1)           │         666,635 │
+└──────────────────────────────────────┴─────────────────────────────┴─────────────────┘
+ Total params: 1,331,339 (5.08 MB)
+ Trainable params: 1,331,339 (5.08 MB)
+ Non-trainable params: 0 (0.00 B)
+Training Sparse Autoencoder...
+2025-07-26 19:47:36.496806: I tensorflow/core/framework/local_rendezvous.cc:405] Local rendezvous is aborting with status: OUT_OF_RANGE: End of sequence
+Epoch 1/10, Sparse AE Loss:  0.150737
+2025-07-26 19:48:57.242084: I tensorflow/core/framework/local_rendezvous.cc:405] Local rendezvous is aborting with status: OUT_OF_RANGE: End of sequence
+Epoch 2/10, Sparse AE Loss:  0.125549
+Epoch 3/10, Sparse AE Loss:  0.116369
+2025-07-26 19:51:38.517581: I tensorflow/core/framework/local_rendezvous.cc:405] Local rendezvous is aborting with status: OUT_OF_RANGE: End of sequence
+Epoch 4/10, Sparse AE Loss:  0.113052
+Epoch 5/10, Sparse AE Loss:  0.111417
+Epoch 6/10, Sparse AE Loss:  0.083901
+Epoch 7/10, Sparse AE Loss:  0.047075
+2025-07-26 19:57:01.234958: I tensorflow/core/framework/local_rendezvous.cc:405] Local rendezvous is aborting with status: OUT_OF_RANGE: End of sequence
+Epoch 8/10, Sparse AE Loss:  0.033782
+Epoch 9/10, Sparse AE Loss:  0.026462
+Epoch 10/10, Sparse AE Loss:  0.018814
+
+Training Contractive Autoencoder...
+Epoch 1/10, Contractive AE Loss:  0.121577
+Epoch 2/10, Contractive AE Loss:  0.099160
+Epoch 3/10, Contractive AE Loss:  0.090129
+Epoch 4/10, Contractive AE Loss:  0.086656
+Epoch 5/10, Contractive AE Loss:  0.085417
+2025-07-26 20:11:33.348518: I tensorflow/core/framework/local_rendezvous.cc:405] Local rendezvous is aborting with status: OUT_OF_RANGE: End of sequence
+Epoch 6/10, Contractive AE Loss:  0.085026
+Epoch 7/10, Contractive AE Loss:  0.084925
+Epoch 8/10, Contractive AE Loss:  0.084904
+Epoch 9/10, Contractive AE Loss:  0.084902
+Epoch 10/10, Contractive AE Loss:  0.084900
+
+Reconstructing and Validating Sparse Autoencoder...
+Sparse Autoencoder Test MSE: 0.010388
+
+Reconstructing and Validating Contractive Autoencoder...
+Contractive Autoencoder Test MSE: 0.078306
+
+Plotting t-SNE for Sparse Autoencoder...
+E:\AI\ai-ml-course\venv\Lib\site-packages\sklearn\manifold\_t_sne.py:1164: FutureWarning: 'n_iter' was renamed to 'max_iter' in version 1.5 and will be removed in 1.7.
+  warnings.warn(
+
+Plotting t-SNE for Contractive Autoencoder...
+E:\AI\ai-ml-course\venv\Lib\site-packages\sklearn\manifold\_t_sne.py:1164: FutureWarning: 'n_iter' was renamed to 'max_iter' in version 1.5 and will be removed in 1.7.
+  warnings.warn(
+
+Interpolation Analysis for Sparse Autoencoder...
+
+Sparse Autoencoder Metrics:
+Alpha | Avg PSNR (dB) | Avg L2 Norm
+------|---------------|------------
+0.0  | inf      | 0.0000
+0.2  | 28.2710      | 0.1453
+0.4  | 22.9598      | 0.2438
+0.6  | 22.9727      | 0.2441
+0.8  | 27.8999      | 0.1460
+1.0  | inf      | 0.0000
+
+Interpolation Analysis for Contractive Autoencoder...
+
+Contractive Autoencoder Metrics:
+Alpha | Avg PSNR (dB) | Avg L2 Norm
+------|---------------|------------
+0.0  | inf      | 0.0000
+0.2  | inf      | 100.7631
+0.4  | inf      | 157.2547
+0.6  | inf      | 157.8594
+0.8  | inf      | 102.3415
+1.0  | inf      | 0.0000
+
+Classifying Digits using Sparse Autoencoder Embeddings...
+Sparse Autoencoder Classification Accuracy: 0.9649
+
+Classifying Digits using Contractive Autoencoder Embeddings...
+E:\AI\ai-ml-course\venv\Lib\site-packages\sklearn\linear_model\_logistic.py:465: ConvergenceWarning: lbfgs failed to converge (status=1):
+STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT.
+
+Increase the number of iterations (max_iter) or scale the data as shown in:
+    https://scikit-learn.org/stable/modules/preprocessing.html
+Please also refer to the documentation for alternative solver options:
+    https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression
+  n_iter_i = _check_optimize_result(
+Contractive Autoencoder Classification Accuracy: 0.8479
+
+Comparison:
+Sparse Autoencoder is better with accuracy 0.9649 vs. Contractive Autoencoder 0.8479

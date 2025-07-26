@@ -32,7 +32,7 @@ if gpus:
 
 # Hyperparameters
 batch_size = 128
-epochs = 20
+epochs = 10
 learning_rate = 0.001
 sparse_lambda = 1e-3
 contractive_lambda = 1e-4
@@ -94,7 +94,7 @@ class SparseAutoencoder(models.Model):
         recon = self.decoder(z)
         return recon, z
 
-    def sparse_ae_loss(y_true, y_pred, z):
+    def sparse_ae_loss(self, y_true, y_pred, z):
         mse_loss = tf.reduce_mean(tf.keras.losses.mse(y_true, y_pred))
         rho_hat = tf.reduce_mean(z, axis=0)
         rho_hat = tf.clip_by_value(rho_hat, epsilon, 1 - epsilon)
@@ -117,7 +117,7 @@ class ContractiveAutoencoder(models.Model):
         recon = self.decoder(z)
         return recon, z
 
-    def contractive_ae_loss(x, recon, z, model):
+    def contractive_ae_loss(self, x, recon, z, model):
         mse_loss = tf.reduce_mean(tf.square(x - recon))
         with tf.GradientTape() as tape:
             tape.watch(z)
@@ -144,17 +144,19 @@ def train(model, dataset, loss_fn, epochs, model_type='sparse'):
             optimizer.apply_gradients(
                 zip(gradients, model.trainable_variables))
             total_loss += loss.numpy()
-        print(f'Epoch {epoch+1}/{epochs}, {model_type.capitalize()} AE Loss: {total_loss / len(dataset): .6f
+        print(
+            f'Epoch {epoch+1}/{epochs}, {model_type.capitalize()} AE Loss: {total_loss / len(dataset): .6f}')
+
 
 def reconstruct_and_validate(model, dataset, model_name, num_images=5):
     for batch in dataset.take(1):
-        images, label= batch
-        original_images= images.numpy()
-        recon_images, _= model(original_images, training=False)
-        recon_images= recon_images.numpy()
+        images, label = batch
+        original_images = images.numpy()
+        recon_images, _ = model(original_images, training=False)
+        recon_images = recon_images.numpy()
 
     # Compute MSE for the batch
-    mse= np.mean((original_images - recon_images) ** 2)
+    mse = np.mean((original_images - recon_images) ** 2)
     print(f"{model_name} Test MSE: {mse:.6f}")
 
     # Visualize original and reconstructed images
@@ -170,24 +172,26 @@ def reconstruct_and_validate(model, dataset, model_name, num_images=5):
         plt.axis('off')
     plt.suptitle(f"{model_name} Reconstruction")
     plt.tight_layout()
-    plt.savefig(f"./data/{model_name}_reconstruction.png")
+    plt.savefig(f"./data/output/{model_name}_reconstruction.png")
     plt.show()
 
 # Function to plot t-SNE of embeddings
+
+
 def plot_tsne_embeddings(model, dataset, model_name, num_samples=1000):
 
-    embeddings= []
-    labels= []
+    embeddings = []
+    labels = []
     for batch_images, batch_labels in dataset.take(num_samples // batch_size + 1):
-        z= model.encoder(batch_images, training=False).numpy()
+        z = model.encoder(batch_images, training=False).numpy()
         embeddings.append(z)
         labels.append(batch_labels.numpy())
-    embeddings= np.concatenate(embeddings, axis=0)[:num_samples]
-    labels= np.concatenate(labels, axis=0)[:num_samples]
+    embeddings = np.concatenate(embeddings, axis=0)[:num_samples]
+    labels = np.concatenate(labels, axis=0)[:num_samples]
 
     # Apply t-SNE to reduce to 2D
-    tsne= TSNE(n_components=2, random_state=42, perplexity=30, n_iter=300)
-    tsne_embeddings= tsne.fit_transform(embeddings)
+    tsne = TSNE(n_components=2, random_state=42, perplexity=30, n_iter=300)
+    tsne_embeddings = tsne.fit_transform(embeddings)
 
     # Plot t-SNE with colors for each class
     plt.figure(figsize=(8, 6))
@@ -198,8 +202,9 @@ def plot_tsne_embeddings(model, dataset, model_name, num_samples=1000):
     plt.ylabel("t-SNE Dimension 2")
     plt.legend(title="Digit", loc="best")
     plt.tight_layout()
-    plt.savefig(f"./data/{model_name}_tsne.png")
+    plt.savefig(f"./data/output/{model_name}_tsne.png")
     plt.show()
+
 
 def compute_psnr(img1, img2, max_val=1.0):
     mse = mean_squared_error(img1.flatten(), img2.flatten())
@@ -208,6 +213,8 @@ def compute_psnr(img1, img2, max_val=1.0):
     return 20 * math.log10(max_val / math.sqrt(mse))
 
 # Function to select pairs and perform interpolation analysis
+
+
 def interpolation_analysis(model, dataset, model_name, num_pairs=20, num_images_per_pair=5):
     # Collect images and labels from test set
     all_images, all_labels = [], []
@@ -265,7 +272,8 @@ def interpolation_analysis(model, dataset, model_name, num_pairs=20, num_images_
             h_prime_alpha = alpha * h1 + (1 - alpha) * h2
             # Decode to get Îα and Î′α
             I_hat_alpha = model.decoder(h_alpha, training=False).numpy()
-            I_hat_prime_alpha = model.decoder(h_prime_alpha, training=False).numpy()
+            I_hat_prime_alpha = model.decoder(
+                h_prime_alpha, training=False).numpy()
 
             # Compute metrics
             psnr = compute_psnr(I_hat_alpha[0], I_hat_prime_alpha[0])
@@ -286,7 +294,7 @@ def interpolation_analysis(model, dataset, model_name, num_pairs=20, num_images_
         plt.suptitle(
             f"{model_name} Pair {pair_idx+1}: Digit {label1} to {label2}")
         plt.tight_layout()
-        plt.savefig(f"./data/{model_name}_pair_{pair_idx+1}.png")
+        plt.savefig(f"./data/output/{model_name}_pair_{pair_idx+1}.png")
         plt.show()
 
     # Report average metrics
@@ -302,38 +310,36 @@ def interpolation_analysis(model, dataset, model_name, num_pairs=20, num_images_
 # Function to perform classification and evaluate embeddings
 def classify_embeddings(model, train_data, train_labels, test_data, test_labels, model_name):
     # Extract embeddings for training set
-    train_embeddings= []
+    train_embeddings = []
     for batch in tf.data.Dataset.from_tensor_slices(train_data).batch(batch_size):
-        z= model.encoder(batch, training=False).numpy()
+        z = model.encoder(batch, training=False).numpy()
         train_embeddings.append(z)
-    train_embeddings= np.concatenate(train_embeddings, axis=0)
+    train_embeddings = np.concatenate(train_embeddings, axis=0)
 
     # Extract embeddings for test set
-    test_embeddings= []
+    test_embeddings = []
     for batch, _ in test_dataset:
-        z= model.encoder(batch, training=False).numpy()
+        z = model.encoder(batch, training=False).numpy()
         test_embeddings.append(z)
-    test_embeddings= np.concatenate(test_embeddings, axis=0)
+    test_embeddings = np.concatenate(test_embeddings, axis=0)
 
     # Train logistic regression classifier
-    classifier= LogisticRegression(max_iter=1000, random_state=42)
+    classifier = LogisticRegression(max_iter=1000, random_state=42)
     classifier.fit(train_embeddings, train_labels)
 
     # Predict on test embeddings
-    test_predictions= classifier.predict(test_embeddings)
+    test_predictions = classifier.predict(test_embeddings)
 
     # Compute accuracy
-    accuracy= accuracy_score(test_labels, test_predictions)
+    accuracy = accuracy_score(test_labels, test_predictions)
     print(f"{model_name} Classification Accuracy: {accuracy:.4f}")
 
     return accuracy
 
 
-
 # Question 1(a): Build Sparse and Contractive Autoencoders
-
-sparse_ae= SparseAutoencoder()
-contractive_ae= ContractiveAutoencoder()
+sparse_ae = SparseAutoencoder()
+contractive_ae = ContractiveAutoencoder()
 print("Sparse Autoencoder Summary:")
 sparse_ae.summary()
 print("\nContractive Autoencoder Summary:")
@@ -341,11 +347,12 @@ contractive_ae.summary()
 
 # Train Sparse Autoencoder
 print("Training Sparse Autoencoder...")
-train(sparse_ae, train_dataset, sparse_ae_loss, epochs, model_type='sparse')
+train(sparse_ae, train_dataset, sparse_ae.sparse_ae_loss,
+      epochs, model_type='sparse')
 
 # Train Contractive Autoencoder
 print("\nTraining Contractive Autoencoder...")
-train(contractive_ae, train_dataset, contractive_ae_loss,
+train(contractive_ae, train_dataset, contractive_ae.contractive_ae_loss,
       epochs, model_type='contractive')
 
 print("\nReconstructing and Validating Sparse Autoencoder...")
@@ -372,10 +379,12 @@ interpolation_analysis(contractive_ae, test_dataset, "Contractive Autoencoder")
 
 # After training, reconstruction, t-SNE, and interpolation analysis
 print("\nClassifying Digits using Sparse Autoencoder Embeddings...")
-sparse_accuracy= classify_embeddings(sparse_ae, x_train, y_train, x_test, y_test, "Sparse Autoencoder")
+sparse_accuracy = classify_embeddings(
+    sparse_ae, x_train, y_train, x_test, y_test, "Sparse Autoencoder")
 
 print("\nClassifying Digits using Contractive Autoencoder Embeddings...")
-contractive_accuracy= classify_embeddings(contractive_ae, x_train, y_train, x_test, y_test, "Contractive Autoencoder")
+contractive_accuracy = classify_embeddings(
+    contractive_ae, x_train, y_train, x_test, y_test, "Contractive Autoencoder")
 
 # Compare and report which is better
 print("\nComparison:")
