@@ -9,25 +9,38 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import os
+import urllib.request
+import scipy.io
+from tensorflow import keras
 
 # Tensorflow setup to use GPU if available
-tf.random.set_seed(42)
-print("TensorFlow version:", tf.__version__)
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
-    try:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        logical_gpus = tf.config.list_logical_devices('GPU')
-        print(
-            f"Found {len(gpus)} Physical GPUs, {len(logical_gpus)} Logical GPUs")
-    except RuntimeError as e:
-        print(e)
-else:
-    print("No GPU found, using CPU instead")
-if gpus:
-    tf.keras.mixed_precision.set_global_policy('mixed_float16')
-    print("Mixed precision enabled")
+batch_size = 128
+epochs = 2
+learning_rate = 0.001
+sparse_lambda = 1e-3
+contractive_lambda = 1e-4
+rho = 0.05
+epsilon = 1e-6
+
+
+def setup_tensorflow():
+    tf.random.set_seed(42)
+    print("TensorFlow version:", tf.__version__)
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logical_gpus = tf.config.list_logical_devices('GPU')
+            print(
+                f"Found {len(gpus)} Physical GPUs, {len(logical_gpus)} Logical GPUs")
+        except RuntimeError as e:
+            print(e)
+    else:
+        print("No GPU found, using CPU instead")
+    if gpus:
+        tf.keras.mixed_precision.set_global_policy('mixed_float16')
+        print("Mixed precision enabled")
 
 
 def load_mnist_data(batch_size=128):
@@ -98,53 +111,53 @@ def build_decoder():
 class SparseAutoencoder(models.Model):
     def __init__(self):
         super(SparseAutoencoder, self).__init__()
-        self.encoder_network = build_encoder()
-        self.decoder_network = build_decoder()
+        self.encoder = build_encoder()
+        self.decoder = build_decoder()
 
     def call(self, input_images):
-        encoded_features = self.encoder_network(input_images)
-        reconstructed_images = self.decoder_network(encoded_features)
+        encoded_features = self.encoder(input_images)
+        reconstructed_images = self.decoder(encoded_features)
         return reconstructed_images, encoded_features
 
-    def loss(self, original_images, reconstructed_images, encoded_features):
-        reconstruction_loss = tf.reduce_mean(
-            tf.keras.losses.mse(original_images, reconstructed_images))
-        average_activation = tf.reduce_mean(encoded_features, axis=0)
-        clipped_activation = tf.clip_by_value(
-            average_activation, epsilon, 1 - epsilon)
-        divergence = rho * tf.math.log(rho / clipped_activation) + \
-            (1 - rho) * tf.math.log((1 - rho) / clipped_activation)
-        sparsity_penalty = sparse_lambda * tf.reduce_sum(
-            tf.clip_by_value(divergence, -1e4, 1e4))
-        return reconstruction_loss + sparsity_penalty
+
+def sparse_ae_loss(y_true, y_pred, z):
+    mse_loss = tf.reduce_mean(tf.keras.losses.mse(y_true, y_pred))
+    rho_hat = tf.reduce_mean(z, axis=0)
+    rho_hat = tf.clip_by_value(rho_hat, epsilon, 1 - epsilon)
+    kl_div = rho * tf.math.log(rho / rho_hat) + \
+        (1 - rho) * tf.math.log((1 - rho) / (1 - rho_hat))
+    # Clip KL term
+    kl_loss = sparse_lambda * tf.reduce_sum(
+        tf.clip_by_value(kl_div, -1e4, 1e4))
+    return mse_loss + kl_loss
 
 
 class ContractiveAutoencoder(models.Model):
     def __init__(self):
         super(ContractiveAutoencoder, self).__init__()
-        self.encoder_network = build_encoder()
-        self.decoder_network = build_decoder()
+        self.encoder = build_encoder()
+        self.decoder = build_decoder()
 
     def call(self, input_images):
-        encoded_features = self.encoder_network(input_images)
-        reconstructed_images = self.decoder_network(encoded_features)
+        encoded_features = self.encoder(input_images)
+        reconstructed_images = self.decoder(encoded_features)
         return reconstructed_images, encoded_features
 
-    def loss(self, original_images, reconstructed_images, encoded_features, model):
-        reconstruction_loss = tf.reduce_mean(
-            tf.square(original_images - reconstructed_images))
-        with tf.GradientTape() as tape:
-            tape.watch(encoded_features)
-            reconstructed_output = model.decoder_network(encoded_features)
-        jacobian_gradients = tape.gradient(
-            reconstructed_output, encoded_features)
-        contractive_penalty = contractive_lambda * tf.reduce_mean(
-            tf.reduce_sum(tf.square(jacobian_gradients), axis=1))
-        return reconstruction_loss + contractive_penalty
 
+def contractive_ae_loss(x, recon, z, model):
+    mse_loss = tf.reduce_mean(tf.square(x - recon))
+    with tf.GradientTape() as tape:
+        tape.watch(z)
+        recon = model.decoder(z)
+    grad_z = tape.gradient(recon, z)
+    j_loss = contractive_lambda * tf.reduce_mean(
+        tf.reduce_sum(tf.square(grad_z), axis=1))
+    return mse_loss + j_loss
 
 # Train function for both Sparse and Contractive Autoencoder
-def train(autoencoder_model, training_dataset, loss_function, num_epochs, autoencoder_type='sparse'):
+
+
+def train(autoencoder_model, training_dataset, loss_function, num_epochs, learning_rate, model_type='sparse'):
     optimizer = tf.keras.optimizers.Adam(learning_rate)
     for current_epoch in range(num_epochs):
         epoch_total_loss = 0
@@ -152,7 +165,7 @@ def train(autoencoder_model, training_dataset, loss_function, num_epochs, autoen
             with tf.GradientTape() as gradient_tape:
                 reconstructed_images, encoded_features = autoencoder_model(
                     training_batch)
-                if autoencoder_type == 'sparse':
+                if model_type == 'sparse':
                     current_loss = loss_function(
                         training_batch, reconstructed_images, encoded_features)
                 else:
@@ -164,7 +177,7 @@ def train(autoencoder_model, training_dataset, loss_function, num_epochs, autoen
                 zip(computed_gradients, autoencoder_model.trainable_variables))
             epoch_total_loss += current_loss.numpy()
         print(
-            f'Epoch {current_epoch+1}/{num_epochs}, {autoencoder_type.capitalize()} AE Loss: {epoch_total_loss / len(training_dataset): .6f}')
+            f'Epoch {current_epoch+1}/{num_epochs}, {model_type.capitalize()} AE Loss: {epoch_total_loss / len(training_dataset): .6f}')
 
 
 def reconstruct_and_validate(model, dataset, model_name, num_images=5):
@@ -340,17 +353,21 @@ def classify_embeddings(model, train_data, train_labels, test_data, test_labels,
     train_embeddings = np.concatenate(train_embeddings, axis=0)
 
     test_embeddings = []
-    for batch, _ in test_dataset:
-        z = model.encoder(batch, training=False).numpy()
+    for batch_images, batch_labels in test_data:
+        z = model.encoder(batch_images, training=False).numpy()
         test_embeddings.append(z)
     test_embeddings = np.concatenate(test_embeddings, axis=0)
+
+    test_labels_extracted = []
+    for _, batch_labels in test_data:
+        test_labels_extracted.append(batch_labels.numpy())
+    test_labels_extracted = np.concatenate(test_labels_extracted, axis=0)
 
     classifier = LogisticRegression(max_iter=1000, random_state=42)
     classifier.fit(train_embeddings, train_labels)
 
     test_predictions = classifier.predict(test_embeddings)
-
-    accuracy = accuracy_score(test_labels, test_predictions)
+    accuracy = accuracy_score(test_labels_extracted, test_predictions)
     print(f"{model_name} Classification Accuracy: {accuracy:.4f}")
 
     return accuracy
@@ -360,27 +377,19 @@ def classify_embeddings(model, train_data, train_labels, test_data, test_labels,
 def run_autoencoder_experiments():
     setup_tensorflow()
 
-    batch_size = 128
-    epochs = 10
-    learning_rate = 0.001
-    sparse_lambda = 1e-3
-    contractive_lambda = 1e-4
-    rho = 0.05
-    epsilon = 1e-6
-
     (x_train, y_train), (x_test,
                          y_test), train_dataset, test_dataset = load_mnist_data(batch_size)
 
-    sparse_ae = SparseAutoencoder(sparse_lambda, rho, epsilon)
-    contractive_ae = ContractiveAutoencoder(contractive_lambda)
+    sparse_ae = SparseAutoencoder()
+    contractive_ae = ContractiveAutoencoder()
 
     print("Training Sparse Autoencoder...")
-    train(sparse_ae, train_dataset, sparse_ae.loss,
+    train(sparse_ae, train_dataset, sparse_ae_loss,
           epochs, learning_rate, 'sparse')
 
     print("\nTraining Contractive Autoencoder...")
     train(contractive_ae, train_dataset,
-          contractive_ae.loss, epochs, learning_rate, 'contractive')
+          contractive_ae_loss, epochs, learning_rate, 'contractive')
 
     print("\nReconstructing and Validating Sparse Autoencoder...")
     reconstruct_and_validate(sparse_ae, test_dataset, "Sparse Autoencoder")
@@ -406,11 +415,11 @@ def run_autoencoder_experiments():
 
     print("\nClassifying Digits using Sparse Autoencoder Embeddings...")
     sparse_accuracy = classify_embeddings(
-        sparse_ae, x_train, y_train, x_test, y_test, "Sparse Autoencoder", batch_size)
+        sparse_ae, x_train, y_train, test_dataset, y_test, "Sparse Autoencoder")
 
     print("\nClassifying Digits using Contractive Autoencoder Embeddings...")
     contractive_accuracy = classify_embeddings(
-        contractive_ae, x_train, y_train, x_test, y_test, "Contractive Autoencoder", batch_size)
+        contractive_ae, x_train, y_train, test_dataset, y_test, "Contractive Autoencoder")
 
     print("\nComparison:")
     if sparse_accuracy > contractive_accuracy:
@@ -450,7 +459,7 @@ class Sampling(layers.Layer):
         return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
 
-class VAE(keras.Model):
+class VAE(tf.keras.Model):
     def __init__(self, encoder, decoder, original_image_dim=560, **kwargs):
         super(VAE, self).__init__(**kwargs)
         self.encoder = encoder
@@ -570,7 +579,7 @@ def traverse_latent_dimension(encoder, decoder, faces, latent_dim_to_vary=4, ori
 def run_vae_experiments():
     batch_size = 128
     latent_dim = 20
-    epochs = 200
+    epochs = 10
     learning_rate = 1e-3
     original_image_dim = 28 * 20
 
