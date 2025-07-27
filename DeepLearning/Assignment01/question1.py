@@ -12,7 +12,7 @@ import os
 
 # Tensorflow setup to use GPU if available
 batch_size = 128
-epochs = 2
+epochs = 10
 learning_rate = 0.001
 sparse_lambda = 1e-3
 contractive_lambda = 1e-4
@@ -37,7 +37,7 @@ if gpus:
     tf.keras.mixed_precision.set_global_policy('mixed_float16')
     print("Mixed precision enabled")
 
-os.makedirs("/data/output/q1", exist_ok=True)
+os.makedirs("./data/output/q1", exist_ok=True)
 
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 x_train = x_train.astype('float32') / 255.0
@@ -180,7 +180,7 @@ def reconstruct_and_validate(model, dataset, model_name, num_images=5):
         plt.axis('off')
     plt.suptitle(f"{model_name} Reconstruction")
     plt.tight_layout()
-    plt.savefig(f"/data/output/q1/{model_name}_reconstruction.png")
+    plt.savefig(f"./data/output/q1/{model_name}_reconstruction.png")
     # plt.show()
     plt.close()
 
@@ -211,7 +211,7 @@ def plot_tsne_embeddings(model, dataset, model_name, num_samples=1000):
     plt.ylabel("t-SNE Dimension 2")
     plt.legend(title="Digit", loc="best")
     plt.tight_layout()
-    plt.savefig(f"/data/output/q1/{model_name}_tsne.png")
+    plt.savefig(f"./data/output/q1/{model_name}_tsne.png")
     # plt.show()
     plt.close()
 
@@ -309,7 +309,7 @@ def interpolation_analysis(model, dataset, model_name, num_pairs=20, num_images_
         plt.suptitle(
             f"{model_name} Pair {pair_index + 1}: Digit {first_digit_label} to {second_digit_label}")
         plt.tight_layout()
-        plt.savefig(f"/data/output/q1/{model_name}_pair_{pair_index + 1}.png")
+        plt.savefig(f"./data/output/q1/{model_name}_pair_{pair_index + 1}.png")
         plt.close()
 
     # Print summary metrics

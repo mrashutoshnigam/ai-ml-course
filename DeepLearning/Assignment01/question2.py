@@ -15,10 +15,10 @@ ORIGINAL_IMAGE_DIM = np.prod(ORIGINAL_IMAGE_SHAPE)
 EPOCHS = 200
 LEARNING_RATE = 1e-3
 DATASET_URL = "https://cs.nyu.edu/home/people/in_memoriam/roweis/data/frey_rawface.mat"
-DATASET_FILENAME = "/data/input/q2/frey_rawface.mat"
+DATASET_FILENAME = "./data/input/q2/frey_rawface.mat"
 
 os.makedirs(os.path.dirname(DATASET_FILENAME), exist_ok=True)
-os.makedirs("/data/output/q2", exist_ok=True)
+os.makedirs("./data/output/q2", exist_ok=True)
 if not os.path.exists(DATASET_FILENAME):
     print("Downloading Frey Face dataset...")
     urllib.request.urlretrieve(DATASET_URL, DATASET_FILENAME)
@@ -157,9 +157,10 @@ for i in range(n):
     ax.get_yaxis().set_visible(False)
     if i == n // 2:
         ax.set_title("Reconstructed Images")
-plt.savefig("/data/output/q2/reconstructed_images.png")
+plt.tight_layout()
+plt.savefig("./data/output/q2/reconstructed_images.png")
 # plt.show()
-# plt.close()
+plt.close()
 
 """### 4. Sample from the Latent Space to Generate New Faces"""
 
@@ -181,7 +182,7 @@ plt.figure(figsize=(15, 5))
 plt.imshow(figure, cmap="gray")
 plt.title("Generated Faces from Random Latent Vectors")
 plt.axis('off')
-plt.savefig("/data/output/q2/generated_faces.png")
+plt.savefig("./data/output/q2/generated_faces.png")
 # plt.show()
 plt.close()
 
@@ -218,6 +219,6 @@ for i, val in enumerate(np.linspace(min_val, max_val, n_steps)):
     ax.axis('off')
 
 fig.suptitle(f'Traversal of Latent Dimension {latent_dim_to_vary}')
-plt.savefig("/data/output/q2/latent_traversal.png")
+plt.savefig("./data/output/q2/latent_traversal.png")
 # plt.show()
 plt.close()
