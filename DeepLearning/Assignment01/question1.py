@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 
 # Tensorflow setup to use GPU if available
 batch_size = 128
-epochs = 10
+epochs = 1
 learning_rate = 0.001
 sparse_lambda = 1e-3
 contractive_lambda = 1e-4
@@ -235,10 +235,10 @@ def plot_tsne_embeddings(model, dataset, model_name, num_samples=1000):
     labels = np.concatenate(labels, axis=0)[:num_samples]
 
     # Apply t-SNE to reduce to 2D
-    tsne = TSNE(n_components=2, random_state=42, perplexity=30, n_iter=300)
+    tsne = TSNE(n_components=2, random_state=42, perplexity=30, max_iter=300)
     tsne_embeddings = tsne.fit_transform(embeddings)
 
-    # Plot t-SNE with colors for each class
+    # Plot t-SNE with codelors for each class
     plt.figure(figsize=(8, 6))
     sns.scatterplot(x=tsne_embeddings[:, 0], y=tsne_embeddings[:, 1], hue=labels,
                     palette='tab10', legend='full', s=50)
