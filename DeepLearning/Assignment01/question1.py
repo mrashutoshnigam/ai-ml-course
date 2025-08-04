@@ -9,6 +9,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import os
+from sklearnex import patch_sklearn
+import warnings
+warnings.filterwarnings("ignore")
 
 # Tensorflow setup to use GPU if available
 batch_size = 128
@@ -20,6 +23,11 @@ rho = 0.05
 epsilon = 1e-6
 
 tf.random.set_seed(42)
+
+print(len(tf.config.list_physical_devices('GPU')) > 0)
+print(tf.config.list_physical_devices('GPU'))
+patch_sklearn()
+
 print("TensorFlow version:", tf.__version__)
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
@@ -62,7 +70,8 @@ def build_encoder():
     x = layers.Conv2D(256, 3, padding='same', activation='relu')(x)
     x = layers.MaxPooling2D(2)(x)
     x = layers.Flatten()(x)
-    z = layers.Dense(128)(x)
+    # Use linear activation for latent space (sigmoid applied in loss function)
+    z = layers.Dense(128, activation=None)(x)
     return models.Model(inputs, z, name='encoder')
 
 
@@ -96,15 +105,21 @@ class SparseAutoencoder(models.Model):
 
 
 def sparse_ae_loss(y_true, y_pred, z):
+    # Ensure tensors have the same dtype to avoid mixed precision issues
+    y_true = tf.cast(y_true, tf.float32)
+    y_pred = tf.cast(y_pred, tf.float32)
+    z = tf.cast(z, tf.float32)
     mse_loss = tf.reduce_mean(tf.keras.losses.mse(y_true, y_pred))
-    rho_hat = tf.reduce_mean(z, axis=0)
+    z_activated = tf.nn.sigmoid(z)
+    rho_hat = tf.reduce_mean(z_activated, axis=0)
     rho_hat = tf.clip_by_value(rho_hat, epsilon, 1 - epsilon)
-    kl_div = rho * tf.math.log(rho / rho_hat) + \
-        (1 - rho) * tf.math.log((1 - rho) / (1 - rho_hat))
-    # Clip KL term
-    kl_loss = sparse_lambda * tf.reduce_sum(
-        tf.clip_by_value(kl_div, -1e4, 1e4))
-    return mse_loss + kl_loss
+    rho_clipped = tf.clip_by_value(rho, epsilon, 1 - epsilon)
+    kl_div = rho_clipped * tf.math.log(rho_clipped / rho_hat) + \
+        (1 - rho_clipped) * tf.math.log((1 - rho_clipped) / (1 - rho_hat))
+    kl_loss = sparse_lambda * tf.reduce_sum(kl_div)
+    kl_loss = tf.where(tf.math.is_nan(kl_loss), 0.0, kl_loss)
+    total_loss = mse_loss + kl_loss
+    return total_loss
 
 
 class ContractiveAutoencoder(models.Model):
@@ -120,11 +135,16 @@ class ContractiveAutoencoder(models.Model):
 
 
 def contractive_ae_loss(x, recon, z, model):
+    x = tf.cast(x, tf.float32)
+    recon = tf.cast(recon, tf.float32)
+    z = tf.cast(z, tf.float32)
+
     mse_loss = tf.reduce_mean(tf.square(x - recon))
     with tf.GradientTape() as tape:
         tape.watch(z)
-        recon = model.decoder(z)
-    grad_z = tape.gradient(recon, z)
+        recon_for_grad = model.decoder(z)
+        recon_for_grad = tf.cast(recon_for_grad, tf.float32)
+    grad_z = tape.gradient(recon_for_grad, z)
     j_loss = contractive_lambda * tf.reduce_mean(
         tf.reduce_sum(tf.square(grad_z), axis=1))
     return mse_loss + j_loss
@@ -137,6 +157,7 @@ def train(autoencoder_model, training_dataset, loss_function, num_epochs, learni
     optimizer = tf.keras.optimizers.Adam(learning_rate)
     for current_epoch in range(num_epochs):
         epoch_total_loss = 0
+        batch_count = 0
         for training_batch in training_dataset:
             with tf.GradientTape() as gradient_tape:
                 reconstructed_images, encoded_features = autoencoder_model(
@@ -147,13 +168,28 @@ def train(autoencoder_model, training_dataset, loss_function, num_epochs, learni
                 else:
                     current_loss = loss_function(
                         training_batch, reconstructed_images, encoded_features, autoencoder_model)
+
+            # Check for NaN loss and skip this batch if found
+            if tf.math.is_nan(current_loss):
+                print(
+                    f"Warning: NaN loss detected in batch {batch_count}, skipping...")
+                continue
+
             computed_gradients = gradient_tape.gradient(
                 current_loss, autoencoder_model.trainable_variables)
+
+            # Clip gradients to prevent explosion
+            computed_gradients = [tf.clip_by_value(grad, -1.0, 1.0) if grad is not None else grad
+                                  for grad in computed_gradients]
+
             optimizer.apply_gradients(
                 zip(computed_gradients, autoencoder_model.trainable_variables))
             epoch_total_loss += current_loss.numpy()
+            batch_count += 1
+
+        avg_loss = epoch_total_loss / batch_count if batch_count > 0 else 0
         print(
-            f'Epoch {current_epoch + 1}/{num_epochs}, {model_type.capitalize()} AE Loss: {epoch_total_loss / len(training_dataset): .6f}')
+            f'Epoch {current_epoch + 1}/{num_epochs}, {model_type.capitalize()} AE Loss: {avg_loss:.6f}')
 
 
 def reconstruct_and_validate(model, dataset, model_name, num_images=5):
